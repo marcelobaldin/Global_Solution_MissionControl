@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MissionControl - Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+/* ========== RESET & BASE ========== */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b0d1a;--card:#131631;--sidebar:#0f1128;
+  --cyan:#00d4ff;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;
+  --text:#e2e8f0;--muted:#94a3b8;--border:rgba(0,212,255,.12);
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+
+/* ========== SIDEBAR ========== */
+.sidebar{
+  width:220px;min-height:100vh;background:var(--sidebar);
+  border-right:1px solid var(--border);padding:20px 0;
+  position:fixed;left:0;top:0;bottom:0;z-index:100;
+  display:flex;flex-direction:column;
+}
+.sidebar .brand{
+  padding:0 20px 20px;border-bottom:1px solid var(--border);
+  text-align:center;
+}
+.sidebar .brand h2{color:var(--cyan);font-size:15px;letter-spacing:2px}
+.sidebar .brand small{color:var(--muted);font-size:10px;letter-spacing:1px}
+.sidebar nav{flex:1;padding:16px 0}
+.sidebar nav a{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 20px;color:var(--muted);text-decoration:none;
+  font-size:13px;transition:all .15s;border-left:3px solid transparent;
+}
+.sidebar nav a:hover,.sidebar nav a.active{
+  color:var(--cyan);background:rgba(0,212,255,.06);
+  border-left-color:var(--cyan);
+}
+.sidebar nav a .icon{width:18px;text-align:center;font-size:15px}
+.sidebar .user{
+  padding:16px 20px;border-top:1px solid var(--border);
+  font-size:12px;color:var(--muted);
+}
+.sidebar .user strong{color:var(--text);display:block;margin-bottom:2px}
+.sidebar .user a{color:var(--red);text-decoration:none;font-size:11px}
+
+/* ========== MAIN ========== */
+.main{margin-left:220px;flex:1;padding:24px 28px}
+.main h1{font-size:20px;margin-bottom:20px;color:var(--text)}
+section{display:none}
+section.active{display:block}
+
+/* ========== CARDS ========== */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:16px;
+}
+.card .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.card .value{font-size:24px;font-weight:700}
+.card .sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* ========== STATUS BADGE ========== */
+.badge{
+  display:inline-block;padding:3px 10px;border-radius:20px;
+  font-size:11px;font-weight:700;letter-spacing:1px;
+}
+.badge-normal{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.badge-alerta{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+.badge-critico{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+
+/* ========== MODULOS GRID ========== */
+.modulos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0}
+.modulo-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:14px;text-align:center;
+  transition:border-color .2s;
+}
+.modulo-card.online{border-left:3px solid var(--green)}
+.modulo-card.offline{border-left:3px solid var(--red)}
+.modulo-card .mod-name{font-size:13px;font-weight:600;margin-bottom:4px}
+.modulo-card .mod-desc{font-size:10px;color:var(--muted)}
+.modulo-card .mod-status{
+  margin-top:8px;font-size:11px;font-weight:700;
+}
+.modulo-card.online .mod-status{color:var(--green)}
+.modulo-card.offline .mod-status{color:var(--red)}
+
+/* ========== CHART ========== */
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.chart-box{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:16px;
+}
+.chart-box h3{font-size:13px;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
+.chart-wrap{position:relative;height:280px}
+
+/* ========== TABLE ========== */
+.tbl-wrap{overflow-x:auto;margin:16px 0}
+table{
+  width:100%;border-collapse:collapse;font-size:12px;
+}
+table th{
+  background:rgba(0,212,255,.08);color:var(--cyan);
+  padding:10px 12px;text-align:left;font-weight:600;
+  border-bottom:1px solid var(--border);white-space:nowrap;
+}
+table td{
+  padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);
+}
+table tr:hover td{background:rgba(0,212,255,.03)}
+
+/* ========== ALERTAS ========== */
+.alerta-item{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:14px 16px;margin-bottom:10px;
+  display:flex;gap:14px;align-items:flex-start;
+}
+.alerta-item .sev-dot{
+  width:10px;height:10px;border-radius:50%;margin-top:4px;flex-shrink:0;
+}
+.alerta-item .sev-dot.critico{background:var(--red);box-shadow:0 0 8px rgba(239,68,68,.5)}
+.alerta-item .sev-dot.alerta{background:var(--amber);box-shadow:0 0 8px rgba(245,158,11,.5)}
+.alerta-item .sev-dot.normal{background:var(--green)}
+.alerta-item .alerta-body{flex:1}
+.alerta-item .alerta-titulo{font-size:13px;font-weight:600;margin-bottom:2px}
+.alerta-item .alerta-desc{font-size:11px;color:var(--muted);margin-bottom:4px}
+.alerta-item .alerta-rec{font-size:11px;color:var(--cyan);font-style:italic}
+.alerta-item .alerta-hora{font-size:10px;color:var(--muted);white-space:nowrap}
+
+/* ========== EVENTOS ========== */
+.evento-item{
+  display:flex;gap:12px;padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.evento-item .ev-time{font-size:11px;color:var(--muted);width:130px;flex-shrink:0}
+.evento-item .ev-badge{
+  font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
+  flex-shrink:0;height:20px;line-height:16px;
+}
+.evento-item .ev-badge.INFO{background:rgba(0,212,255,.12);color:var(--cyan)}
+.evento-item .ev-badge.ALERTA{background:rgba(245,158,11,.12);color:var(--amber)}
+.evento-item .ev-badge.CRITICO{background:rgba(239,68,68,.12);color:var(--red)}
+.evento-item .ev-text{font-size:12px;flex:1}
+.evento-item .ev-mod{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+
+/* ========== HIERARQUIA ========== */
+.tree{padding-left:0;list-style:none}
+.tree li{position:relative;padding:6px 0 6px 24px}
+.tree li::before{
+  content:'';position:absolute;left:8px;top:0;bottom:0;
+  border-left:1px dashed rgba(0,212,255,.3);
+}
+.tree li::after{
+  content:'';position:absolute;left:8px;top:16px;width:12px;
+  border-top:1px dashed rgba(0,212,255,.3);
+}
+.tree>li::before{display:none}
+.tree .node{
+  display:inline-block;background:var(--card);
+  border:1px solid var(--border);border-radius:6px;
+  padding:6px 14px;font-size:12px;
+}
+.tree .node.root{background:rgba(0,212,255,.1);border-color:rgba(0,212,255,.3);font-weight:700;color:var(--cyan)}
+.tree .node.cat{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.2);font-weight:600;color:var(--green)}
+.tree .node-val{font-size:10px;color:var(--muted);margin-left:8px}
+
+/* ========== PREVISAO ========== */
+.prev-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:20px;margin-bottom:16px;
+}
+.prev-card h3{font-size:14px;color:var(--cyan);margin-bottom:12px}
+.prev-stat{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px}
+.prev-stat .ps{text-align:center}
+.prev-stat .ps .ps-val{font-size:22px;font-weight:700}
+.prev-stat .ps .ps-lbl{font-size:10px;color:var(--muted);text-transform:uppercase}
+.prev-rec{
+  background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.15);
+  border-radius:8px;padding:12px 16px;font-size:12px;color:var(--cyan);
+  line-height:1.5;
+}
+
+/* ========== ANOMALIA ========== */
+.anomalia-box{
+  background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);
+  border-radius:10px;padding:14px 16px;margin-bottom:10px;
+}
+.anomalia-box .an-title{font-size:13px;font-weight:600;color:var(--amber);margin-bottom:4px}
+.anomalia-box .an-desc{font-size:12px;color:var(--muted);line-height:1.4}
+
+/* ========== REGRAS ========== */
+.regra-item{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:14px 16px;margin-bottom:10px;
+}
+.regra-item .regra-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.regra-item .regra-id{font-size:12px;font-weight:700;color:var(--cyan)}
+.regra-item .regra-expr{font-family:monospace;font-size:11px;color:var(--muted)}
+.regra-item .regra-motivo{font-size:12px;margin-bottom:4px}
+.regra-item .regra-acao{font-size:11px;color:var(--cyan);font-style:italic}
+
+/* ========== RESPONSIVO ========== */
+@media(max-width:900px){
+  .chart-row{grid-template-columns:1fr}
+  .sidebar{width:180px}
+  .main{margin-left:180px;padding:16px}
+}
+@media(max-width:600px){
+  .sidebar{display:none}
+  .main{margin-left:0}
+}
+
+/* ========== BTN ========== */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 16px;border-radius:6px;font-size:12px;
+  font-weight:600;cursor:pointer;border:none;transition:all .15s;
+}
+.btn-cyan{background:rgba(0,212,255,.15);color:var(--cyan);border:1px solid rgba(0,212,255,.3)}
+.btn-cyan:hover{background:rgba(0,212,255,.25)}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="brand">
+    <h2>MISSIONCONTROL</h2>
+    <small>GLOBAL SOLUTION 2026</small>
+  </div>
+  <nav>
+    <a href="#" data-sec="visao" class="active"><span class="icon">&#9678;</span> Visao Geral</a>
+    <a href="#" data-sec="energia"><span class="icon">&#9889;</span> Energia</a>
+    <a href="#" data-sec="ambiente"><span class="icon">&#127777;</span> Ambiente</a>
+    <a href="#" data-sec="alertas"><span class="icon">&#9888;</span> Alertas</a>
+    <a href="#" data-sec="eventos"><span class="icon">&#128203;</span> Eventos</a>
+    <a href="#" data-sec="dados"><span class="icon">&#9638;</span> Matriz de Dados</a>
+    <a href="#" data-sec="hierarquia"><span class="icon">&#128736;</span> Hierarquia</a>
+    <a href="#" data-sec="previsao"><span class="icon">&#128200;</span> Previsao</a>
+    <a href="#" data-sec="regras"><span class="icon">&#128295;</span> Regras Logicas</a>
+  </nav>
+  <div class="user">
+    <strong>{{ nome }}</strong>
+    Operador de Missao<br>
+    <a href="/logout">Sair</a>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ===== VISAO GERAL ===== -->
+<section id="sec-visao" class="active">
+  <h1>Visao Geral da Missao</h1>
+  <div class="cards" id="cards-visao"></div>
+  <h3 style="font-size:14px;color:var(--muted);margin:16px 0 8px">Status dos Modulos</h3>
+  <div class="modulos-grid" id="modulos-grid"></div>
+  <h3 style="font-size:14px;color:var(--muted);margin:16px 0 8px">Anomalias Detectadas</h3>
+  <div id="anomalias-box"></div>
+</section>
+
+<!-- ===== ENERGIA ===== -->
+<section id="sec-energia">
+  <h1>Painel de Energia</h1>
+  <div class="cards" id="cards-energia"></div>
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3>Geracao vs Consumo (kWh)</h3>
+      <div class="chart-wrap"><canvas id="chart-energia-bar"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <h3>Reserva de Bateria (%)</h3>
+      <div class="chart-wrap"><canvas id="chart-reserva"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3>Solar vs Eolica (Distribuicao)</h3>
+      <div class="chart-wrap"><canvas id="chart-solar-eolica"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <h3>Consumo + Media Movel</h3>
+      <div class="chart-wrap"><canvas id="chart-consumo-mm"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== AMBIENTE ===== -->
+<section id="sec-ambiente">
+  <h1>Variaveis Ambientais</h1>
+  <div class="cards" id="cards-ambiente"></div>
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3>Temperatura (C)</h3>
+      <div class="chart-wrap"><canvas id="chart-temp"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <h3>Radiacao (mSv/h)</h3>
+      <div class="chart-wrap"><canvas id="chart-radiacao"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3>Qualidade de Comunicacao (%)</h3>
+      <div class="chart-wrap"><canvas id="chart-comm"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <h3>Velocidade do Vento (km/h)</h3>
+      <div class="chart-wrap"><canvas id="chart-vento"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ALERTAS ===== -->
+<section id="sec-alertas">
+  <h1>Alertas Automaticos</h1>
+  <div class="cards" id="cards-alertas"></div>
+  <div id="alertas-list"></div>
+</section>
+
+<!-- ===== EVENTOS ===== -->
+<section id="sec-eventos">
+  <h1>Log de Eventos (Pilha - LIFO)</h1>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:16px">
+    Eventos mais recentes primeiro (topo da pilha)
+  </p>
+  <div id="eventos-list"></div>
+</section>
+
+<!-- ===== MATRIZ DE DADOS ===== -->
+<section id="sec-dados">
+  <h1>Matriz de Dados</h1>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:16px">
+    Leituras organizadas por horario (linhas) e variavel (colunas) - lista de listas
+  </p>
+  <div class="tbl-wrap" id="matriz-wrap"></div>
+</section>
+
+<!-- ===== HIERARQUIA ===== -->
+<section id="sec-hierarquia">
+  <h1>Hierarquia da Missao</h1>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:16px">
+    Arvore: Energia (solar, eolica, baterias) e Habitat (oxigenio, temperatura, comunicacao)
+  </p>
+  <div id="hierarquia-tree"></div>
+</section>
+
+<!-- ===== PREVISAO ===== -->
+<section id="sec-previsao">
+  <h1>Analise e Previsao de Dados</h1>
+  <div id="previsao-content"></div>
+  <div class="chart-row" style="margin-top:16px">
+    <div class="chart-box">
+      <h3>Reserva: Real + Regressao Linear</h3>
+      <div class="chart-wrap"><canvas id="chart-prev-reserva"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <h3>Temperatura: Real + Media Movel</h3>
+      <div class="chart-wrap"><canvas id="chart-prev-temp"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== REGRAS LOGICAS ===== -->
+<section id="sec-regras">
+  <h1>Regras Logicas do Diagnostico</h1>
+  <div class="prev-card" style="margin-bottom:16px">
+    <h3>Expressao Booleana Principal</h3>
+    <pre style="font-size:12px;color:var(--cyan);line-height:1.6;margin-top:8px">CRITICO = (reserva &lt; 25 AND consumo &gt; geracao_total)
+       OR (NOT comunicacao AND radiacao &gt; 1.0)
+       OR (NOT suporte_vida)</pre>
+  </div>
+  <div id="regras-list"></div>
+  <div class="chart-row" style="margin-top:16px">
+    <div class="chart-box">
+      <h3>Timeline de Status por Horario</h3>
+      <div class="chart-wrap"><canvas id="chart-timeline"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <h3>Distribuicao de Status</h3>
+      <div class="chart-wrap"><canvas id="chart-status-dist"></canvas></div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /main -->
+
+<script>
+/* ========== NAVEGACAO ========== */
+document.querySelectorAll('.sidebar nav a').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelectorAll('.sidebar nav a').forEach(x => x.classList.remove('active'));
+    a.classList.add('active');
+    const sec = a.dataset.sec;
+    document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+    document.getElementById('sec-' + sec).classList.add('active');
+    carregarSecao(sec);
+  });
+});
+
+const cache = {};
+const charts = {};
+
+function api(url) {
+  if (cache[url]) return Promise.resolve(cache[url]);
+  return fetch(url).then(r => r.json()).then(d => { cache[url] = d; return d; });
+}
+
+function badge(status) {
+  const s = status.toLowerCase();
+  return `<span class="badge badge-${s}">${status}</span>`;
+}
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+const chartDefaults = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+  scales: {
+    x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
+    y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.06)' } }
+  }
+};
+
+const pctPlugin = {
+  id: 'pctLabels',
+  afterDatasetsDraw(chart) {
+    if (chart.config.type !== 'doughnut' && chart.config.type !== 'pie') return;
+    const { ctx } = chart;
+    chart.data.datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      const total = ds.data.reduce((a, b) => a + b, 0);
+      if (!total) return;
+      meta.data.forEach((el, i) => {
+        const pct = ((ds.data[i] / total) * 100).toFixed(1) + '%';
+        const { x, y } = el.tooltipPosition();
+        ctx.save();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(pct, x, y);
+        ctx.restore();
+      });
+    });
+  }
+};
+
+/* ========== CARREGADORES DE SECAO ========== */
+function carregarSecao(sec) {
+  const loaders = {
+    visao: carregarVisao,
+    energia: carregarEnergia,
+    ambiente: carregarAmbiente,
+    alertas: carregarAlertas,
+    eventos: carregarEventos,
+    dados: carregarMatriz,
+    hierarquia: carregarHierarquia,
+    previsao: carregarPrevisao,
+    regras: carregarRegras,
+  };
+  if (loaders[sec]) loaders[sec]();
+}
+
+/* ---------- VISAO GERAL ---------- */
+function carregarVisao() {
+  api('/api/visao-geral').then(d => {
+    const e = d.energia;
+    document.getElementById('cards-visao').innerHTML = `
+      <div class="card"><div class="label">Status</div><div class="value">${badge(d.status_geral)}</div></div>
+      <div class="card"><div class="label">Modulos Online</div><div class="value">${d.modulos_online}/${d.modulos_total}</div></div>
+      <div class="card"><div class="label">Reserva Bateria</div><div class="value" style="color:${e.reserva<25?'var(--red)':e.reserva<40?'var(--amber)':'var(--green)'}">${e.reserva}%</div></div>
+      <div class="card"><div class="label">Geracao Total</div><div class="value">${e.total} kWh</div><div class="sub">Solar ${e.solar} + Eolica ${e.eolica}</div></div>
+      <div class="card"><div class="label">Consumo</div><div class="value">${e.consumo} kWh</div></div>
+      <div class="card"><div class="label">Balanco</div><div class="value" style="color:${e.balanco<0?'var(--red)':'var(--green)'}">${e.balanco>0?'+':''}${e.balanco} kWh</div></div>
+    `;
+
+    let mg = '';
+    for (const [k, m] of Object.entries(d.modulos)) {
+      const cls = m.status ? 'online' : 'offline';
+      mg += `<div class="modulo-card ${cls}">
+        <div class="mod-name">${m.nome}</div>
+        <div class="mod-desc">${m.desc}</div>
+        <div class="mod-status">${m.status ? 'ONLINE' : 'OFFLINE'}</div>
+      </div>`;
+    }
+    document.getElementById('modulos-grid').innerHTML = mg;
+
+    let an = '';
+    if (d.anomalias.length === 0) {
+      an = '<p style="color:var(--green);font-size:13px">Nenhuma anomalia detectada.</p>';
+    } else {
+      d.anomalias.forEach(a => {
+        an += `<div class="anomalia-box">
+          <div class="an-title">${a.tipo} - ${a.hora} - ${a.variavel}</div>
+          <div class="an-desc">${a.descricao}</div>
+        </div>`;
+      });
+    }
+    document.getElementById('anomalias-box').innerHTML = an;
+  });
+}
+
+/* ---------- ENERGIA ---------- */
+function carregarEnergia() {
+  api('/api/energia').then(d => {
+    const ultimo = d.reserva[d.reserva.length - 1];
+    const solarT = d.solar.reduce((a, b) => a + b, 0);
+    const eolicaT = d.eolica.reduce((a, b) => a + b, 0);
+    const consumoT = d.consumo.reduce((a, b) => a + b, 0);
+
+    document.getElementById('cards-energia').innerHTML = `
+      <div class="card"><div class="label">Reserva Atual</div><div class="value" style="color:${ultimo<25?'var(--red)':ultimo<40?'var(--amber)':'var(--green)'}">${ultimo}%</div></div>
+      <div class="card"><div class="label">Solar Total</div><div class="value">${solarT} kWh</div></div>
+      <div class="card"><div class="label">Eolica Total</div><div class="value">${eolicaT} kWh</div></div>
+      <div class="card"><div class="label">Consumo Total</div><div class="value">${consumoT} kWh</div></div>
+      <div class="card"><div class="label">Tendencia</div><div class="value" style="font-size:16px;color:${d.previsao_reserva.tendencia==='declinante'?'var(--red)':'var(--green)'}">${d.previsao_reserva.tendencia.toUpperCase()}</div></div>
+    `;
+
+    // Geracao vs Consumo
+    destroyChart('chart-energia-bar');
+    charts['chart-energia-bar'] = new Chart(document.getElementById('chart-energia-bar'), {
+      type: 'bar',
+      data: {
+        labels: d.horarios,
+        datasets: [
+          { label: 'Solar', data: d.solar, backgroundColor: 'rgba(245,158,11,.7)' },
+          { label: 'Eolica', data: d.eolica, backgroundColor: 'rgba(0,212,255,.7)' },
+          { label: 'Consumo', data: d.consumo, backgroundColor: 'rgba(239,68,68,.5)', type: 'line', borderColor: '#ef4444', borderWidth: 2, pointRadius: 3, fill: false }
+        ]
+      },
+      options: { ...chartDefaults, plugins: { ...chartDefaults.plugins } }
+    });
+
+    // Reserva
+    destroyChart('chart-reserva');
+    charts['chart-reserva'] = new Chart(document.getElementById('chart-reserva'), {
+      type: 'line',
+      data: {
+        labels: d.horarios,
+        datasets: [{
+          label: 'Reserva %', data: d.reserva,
+          borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.1)',
+          fill: true, tension: .3, pointRadius: 4
+        }]
+      },
+      options: {
+        ...chartDefaults,
+        plugins: {
+          ...chartDefaults.plugins,
+          annotation: {}
+        },
+        scales: {
+          ...chartDefaults.scales,
+          y: { ...chartDefaults.scales.y, min: 0, max: 100 }
+        }
+      }
+    });
+
+    // Solar vs Eolica pie
+    destroyChart('chart-solar-eolica');
+    charts['chart-solar-eolica'] = new Chart(document.getElementById('chart-solar-eolica'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Solar', 'Eolica'],
+        datasets: [{ data: [solarT, eolicaT], backgroundColor: ['#f59e0b', '#00d4ff'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } } },
+      plugins: [pctPlugin]
+    });
+
+    // Consumo + Media movel
+    destroyChart('chart-consumo-mm');
+    charts['chart-consumo-mm'] = new Chart(document.getElementById('chart-consumo-mm'), {
+      type: 'line',
+      data: {
+        labels: d.horarios,
+        datasets: [
+          { label: 'Consumo', data: d.consumo, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.1)', fill: true, tension: .3, pointRadius: 3 },
+          { label: 'Media Movel (3)', data: d.media_movel_consumo, borderColor: '#f59e0b', borderDash: [5, 5], tension: .3, pointRadius: 2, fill: false }
+        ]
+      },
+      options: chartDefaults
+    });
+  });
+}
+
+/* ---------- AMBIENTE ---------- */
+function carregarAmbiente() {
+  api('/api/ambiente').then(d => {
+    const at = d.analise_temp;
+    const lastR = d.radiacao[d.radiacao.length - 1];
+    const lastC = d.comm[d.comm.length - 1];
+
+    document.getElementById('cards-ambiente').innerHTML = `
+      <div class="card"><div class="label">Temp. Interna</div><div class="value">${d.temp_interna[d.temp_interna.length-1]}°C</div><div class="sub">Media: ${at.media}°C</div></div>
+      <div class="card"><div class="label">Temp. Externa</div><div class="value">${d.temp_externa[d.temp_externa.length-1]}°C</div></div>
+      <div class="card"><div class="label">Radiacao</div><div class="value" style="color:${lastR>1?'var(--red)':lastR>.8?'var(--amber)':'var(--green)'}">${lastR} mSv/h</div></div>
+      <div class="card"><div class="label">Comunicacao</div><div class="value" style="color:${lastC<30?'var(--red)':lastC<60?'var(--amber)':'var(--green)'}">${lastC}%</div></div>
+      <div class="card"><div class="label">Vento</div><div class="value">${d.vento[d.vento.length-1]} km/h</div></div>
+      <div class="card"><div class="label">Tendencia Temp.</div><div class="value" style="font-size:14px">${at.tendencia.toUpperCase()}</div></div>
+    `;
+
+    // Temperatura
+    destroyChart('chart-temp');
+    charts['chart-temp'] = new Chart(document.getElementById('chart-temp'), {
+      type: 'line',
+      data: {
+        labels: d.horarios,
+        datasets: [
+          { label: 'Interna', data: d.temp_interna, borderColor: '#22c55e', tension: .3, pointRadius: 3 },
+          { label: 'Media Movel', data: d.temp_media_movel, borderColor: '#f59e0b', borderDash: [5,5], tension: .3, pointRadius: 2 },
+          { label: 'Externa', data: d.temp_externa, borderColor: '#00d4ff', tension: .3, pointRadius: 3 }
+        ]
+      },
+      options: chartDefaults
+    });
+
+    // Radiacao
+    destroyChart('chart-radiacao');
+    charts['chart-radiacao'] = new Chart(document.getElementById('chart-radiacao'), {
+      type: 'bar',
+      data: {
+        labels: d.horarios,
+        datasets: [{
+          label: 'Radiacao mSv/h', data: d.radiacao,
+          backgroundColor: d.radiacao.map(v => v > 1 ? 'rgba(239,68,68,.7)' : v > .8 ? 'rgba(245,158,11,.7)' : 'rgba(34,197,94,.7)')
+        }]
+      },
+      options: chartDefaults
+    });
+
+    // Comunicacao
+    destroyChart('chart-comm');
+    charts['chart-comm'] = new Chart(document.getElementById('chart-comm'), {
+      type: 'line',
+      data: {
+        labels: d.horarios,
+        datasets: [{
+          label: 'Qualidade %', data: d.comm,
+          borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,.1)',
+          fill: true, tension: .3, pointRadius: 4
+        }]
+      },
+      options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, min: 0, max: 100 } } }
+    });
+
+    // Vento
+    destroyChart('chart-vento');
+    charts['chart-vento'] = new Chart(document.getElementById('chart-vento'), {
+      type: 'line',
+      data: {
+        labels: d.horarios,
+        datasets: [{
+          label: 'Vento km/h', data: d.vento,
+          borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,.1)',
+          fill: true, tension: .3, pointRadius: 3
+        }]
+      },
+      options: chartDefaults
+    });
+  });
+}
+
+/* ---------- ALERTAS ---------- */
+function carregarAlertas() {
+  api('/api/alertas').then(alertas => {
+    const criticos = alertas.filter(a => a.severidade === 'CRITICO').length;
+    const alerta = alertas.filter(a => a.severidade === 'ALERTA').length;
+
+    document.getElementById('cards-alertas').innerHTML = `
+      <div class="card"><div class="label">Total Alertas</div><div class="value">${alertas.length}</div></div>
+      <div class="card"><div class="label">Criticos</div><div class="value" style="color:var(--red)">${criticos}</div></div>
+      <div class="card"><div class="label">Alertas</div><div class="value" style="color:var(--amber)">${alerta}</div></div>
+      <div class="card"><div class="label">Estrutura</div><div class="value" style="font-size:14px">FILA (FIFO)</div><div class="sub">collections.deque</div></div>
+    `;
+
+    let html = '';
+    alertas.forEach(a => {
+      html += `<div class="alerta-item">
+        <div class="sev-dot ${a.severidade.toLowerCase()}"></div>
+        <div class="alerta-body">
+          <div class="alerta-titulo">${a.titulo} ${badge(a.severidade)}</div>
+          <div class="alerta-desc">${a.descricao}</div>
+          <div class="alerta-rec">&#8627; ${a.recomendacao}</div>
+        </div>
+        <div class="alerta-hora">${a.hora || ''}</div>
+      </div>`;
+    });
+    document.getElementById('alertas-list').innerHTML = html || '<p style="color:var(--green)">Nenhum alerta.</p>';
+  });
+}
+
+/* ---------- EVENTOS ---------- */
+function carregarEventos() {
+  api('/api/eventos').then(eventos => {
+    let html = '';
+    eventos.forEach((ev, i) => {
+      html += `<div class="evento-item">
+        <div class="ev-time">${ev.timestamp}</div>
+        <span class="ev-badge ${ev.tipo}">${ev.tipo}</span>
+        <div class="ev-mod">${ev.modulo}</div>
+        <div class="ev-text">${ev.descricao}</div>
+      </div>`;
+    });
+    document.getElementById('eventos-list').innerHTML = html;
+  });
+}
+
+/* ---------- MATRIZ ---------- */
+function carregarMatriz() {
+  api('/api/matriz').then(d => {
+    let html = '<table><thead><tr>';
+    d.colunas.forEach(c => html += `<th>${c}</th>`);
+    html += '</tr></thead><tbody>';
+    d.dados.forEach(row => {
+      html += '<tr>';
+      row.forEach((v, i) => {
+        let style = '';
+        if (i === 4 && v < 25) style = 'color:var(--red);font-weight:700';
+        else if (i === 4 && v < 40) style = 'color:var(--amber)';
+        else if (i === 7 && v > 1) style = 'color:var(--red);font-weight:700';
+        else if (i === 7 && v > 0.8) style = 'color:var(--amber)';
+        else if (i === 8 && v < 30) style = 'color:var(--red)';
+        html += `<td style="${style}">${v}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('matriz-wrap').innerHTML = html;
+  });
+}
+
+/* ---------- HIERARQUIA ---------- */
+function carregarHierarquia() {
+  api('/api/hierarquia').then(d => {
+    const m = d.missao_espacial;
+    const html = `
+    <ul class="tree">
+      <li><span class="node root">Missao Espacial</span>
+        <ul class="tree">
+          <li><span class="node cat">Energia</span>
+            <ul class="tree">
+              <li><span class="node">Solar</span><span class="node-val">Geracao: ${m.energia.solar.geracao_kwh} kWh | Status: ${m.energia.solar.status?'Online':'Offline'} | ${m.energia.solar.tipo}</span></li>
+              <li><span class="node">Eolica</span><span class="node-val">Geracao: ${m.energia.eolica.geracao_kwh} kWh | Status: ${m.energia.eolica.status?'Online':'Offline'} | ${m.energia.eolica.tipo}</span></li>
+              <li><span class="node">Baterias</span><span class="node-val">Reserva: ${m.energia.baterias.reserva_pct}% | Capacidade: ${m.energia.baterias.capacidade_pct}% | ${m.energia.baterias.tipo}</span></li>
+            </ul>
+          </li>
+          <li><span class="node cat">Habitat</span>
+            <ul class="tree">
+              <li><span class="node">Oxigenio</span><span class="node-val">Nivel: ${m.habitat.oxigenio.nivel_pct}% | Producao: ${m.habitat.oxigenio.producao} | Reserva: ${m.habitat.oxigenio.reserva_h}h</span></li>
+              <li><span class="node">Temperatura</span><span class="node-val">Interna: ${m.habitat.temperatura.interna_c}°C | Externa: ${m.habitat.temperatura.externa_c}°C | Regulacao: ${m.habitat.temperatura.regulacao}</span></li>
+              <li><span class="node">Comunicacao</span><span class="node-val">Status: ${m.habitat.comunicacao.status?'Online':'Offline'} | Latencia: ${m.habitat.comunicacao.latencia_min} min | Banda: ${m.habitat.comunicacao.banda}</span></li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>`;
+    document.getElementById('hierarquia-tree').innerHTML = html;
+  });
+}
+
+/* ---------- PREVISAO ---------- */
+function carregarPrevisao() {
+  api('/api/previsao').then(d => {
+    const p = d.reserva.previsao;
+    const t = d.temperatura;
+
+    let html = `
+    <div class="prev-card">
+      <h3>Regressao Linear - Reserva de Bateria</h3>
+      <div class="prev-stat">
+        <div class="ps"><div class="ps-val" style="color:${p.tendencia==='declinante'?'var(--red)':'var(--green)'}">${p.tendencia.toUpperCase()}</div><div class="ps-lbl">Tendencia</div></div>
+        <div class="ps"><div class="ps-val">${p.coef_angular}</div><div class="ps-lbl">Coef. Angular</div></div>
+        <div class="ps"><div class="ps-val">${p.r_quadrado}</div><div class="ps-lbl">R²</div></div>
+        <div class="ps"><div class="ps-val" style="color:var(--amber)">${p.horas_ate_critico ? '~'+p.horas_ate_critico+'h' : 'N/A'}</div><div class="ps-lbl">Tempo ate Critico</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+        <strong>Previsoes proximos ciclos:</strong> ${p.previsoes.map(v => v + '%').join(' → ')}
+      </div>
+      <div class="prev-rec">${p.recomendacao}</div>
+    </div>
+    <div class="prev-card">
+      <h3>Media Movel - Temperatura Interna</h3>
+      <div class="prev-stat">
+        <div class="ps"><div class="ps-val">${t.media}°C</div><div class="ps-lbl">Media</div></div>
+        <div class="ps"><div class="ps-val">${t.minima}°C</div><div class="ps-lbl">Minima</div></div>
+        <div class="ps"><div class="ps-val">${t.maxima}°C</div><div class="ps-lbl">Maxima</div></div>
+        <div class="ps"><div class="ps-val">${t.variacao > 0 ? '+' : ''}${t.variacao}°C</div><div class="ps-lbl">Variacao</div></div>
+        <div class="ps"><div class="ps-val">${t.tendencia.toUpperCase()}</div><div class="ps-lbl">Tendencia</div></div>
+      </div>
+    </div>`;
+    document.getElementById('previsao-content').innerHTML = html;
+
+    // Chart: Reserva + regressao
+    const horarios_ext = [...d.horarios, '+3h', '+6h', '+9h', '+12h'];
+    const reserva_ext = [...d.reserva.serie, ...p.previsoes];
+    const real_data = d.reserva.serie.map((v, i) => v);
+    const reg_data = [];
+    for (let i = 0; i < d.horarios.length; i++) {
+      reg_data.push(Math.round((p.coef_angular * i + p.intercepto) * 10) / 10);
+    }
+    for (let i = 0; i < p.previsoes.length; i++) {
+      reg_data.push(p.previsoes[i]);
+      real_data.push(null);
+    }
+
+    destroyChart('chart-prev-reserva');
+    charts['chart-prev-reserva'] = new Chart(document.getElementById('chart-prev-reserva'), {
+      type: 'line',
+      data: {
+        labels: horarios_ext,
+        datasets: [
+          { label: 'Real', data: real_data, borderColor: '#22c55e', pointRadius: 4, tension: .3 },
+          { label: 'Regressao Linear', data: reg_data, borderColor: '#f59e0b', borderDash: [6, 3], pointRadius: 2, tension: 0 },
+        ]
+      },
+      options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, min: 0, max: 100 } } }
+    });
+
+    // Chart: Temp + media movel
+    destroyChart('chart-prev-temp');
+    charts['chart-prev-temp'] = new Chart(document.getElementById('chart-prev-temp'), {
+      type: 'line',
+      data: {
+        labels: d.horarios,
+        datasets: [
+          { label: 'Real', data: d.geracao ? undefined : undefined, borderColor: '#22c55e', pointRadius: 4, tension: .3 },
+          { label: 'Media Movel', data: t.media_movel, borderColor: '#f59e0b', borderDash: [5, 5], pointRadius: 2, tension: .3 },
+        ]
+      },
+      options: chartDefaults
+    });
+    // Fix: get actual temp data
+    api('/api/ambiente').then(amb => {
+      charts['chart-prev-temp'].data.datasets[0].data = amb.temp_interna;
+      charts['chart-prev-temp'].update();
+    });
+  });
+}
+
+/* ---------- REGRAS LOGICAS ---------- */
+function carregarRegras() {
+  api('/api/visao-geral').then(d => {
+    const regras = d.diagnostico.regras_ativadas;
+    let html = '';
+    regras.forEach(r => {
+      html += `<div class="regra-item">
+        <div class="regra-head">
+          <span class="regra-id">${r.id}</span>
+          ${badge(r.resultado)}
+          <span class="regra-expr">${r.expressao}</span>
+        </div>
+        <div class="regra-motivo">${r.motivo}</div>
+        <div class="regra-acao">&#8627; Acao: ${r.acao}</div>
+      </div>`;
+    });
+    document.getElementById('regras-list').innerHTML = html;
+  });
+
+  api('/api/timeline').then(tl => {
+    const cores = tl.map(t => t.status === 'CRITICO' ? 'rgba(239,68,68,.8)' : t.status === 'ALERTA' ? 'rgba(245,158,11,.8)' : 'rgba(34,197,94,.8)');
+
+    destroyChart('chart-timeline');
+    charts['chart-timeline'] = new Chart(document.getElementById('chart-timeline'), {
+      type: 'bar',
+      data: {
+        labels: tl.map(t => t.hora),
+        datasets: [{
+          label: 'Nivel', data: tl.map(t => t.nivel),
+          backgroundColor: cores
+        }]
+      },
+      options: {
+        ...chartDefaults,
+        scales: {
+          ...chartDefaults.scales,
+          y: {
+            ...chartDefaults.scales.y,
+            min: 0, max: 2,
+            ticks: { ...chartDefaults.scales.y.ticks, callback: v => ['NORMAL','ALERTA','CRITICO'][v] || '' }
+          }
+        }
+      }
+    });
+
+    // Distribuicao
+    const counts = { NORMAL: 0, ALERTA: 0, CRITICO: 0 };
+    tl.forEach(t => counts[t.status]++);
+
+    destroyChart('chart-status-dist');
+    charts['chart-status-dist'] = new Chart(document.getElementById('chart-status-dist'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Normal', 'Alerta', 'Critico'],
+        datasets: [{ data: [counts.NORMAL, counts.ALERTA, counts.CRITICO], backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } } },
+      plugins: [pctPlugin]
+    });
+  });
+}
+
+/* ========== INIT ========== */
+carregarVisao();
+</script>
+</body>
+</html>

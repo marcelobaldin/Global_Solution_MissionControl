@@ -1,0 +1,6 @@
+venv_missioncontrol/
+__pycache__/
+*.pyc
+.DS_Store
+Tarefa_*
+Projeto.*

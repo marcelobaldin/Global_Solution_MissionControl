@@ -1,0 +1,13 @@
+timestamp,tipo,modulo,descricao
+2026-06-01 00:15,INFO,energia,Inicio do ciclo de monitoramento Sol 147 - todos os sistemas nominais
+2026-06-01 02:30,ALERTA,energia,Anomalia no sensor solar: geracao de 12 kWh reportada durante periodo noturno
+2026-06-01 05:45,INFO,habitat,Regulagem termica automatica concluida - temperatura estabilizada em 22.3C
+2026-06-01 08:00,INFO,comunicacao,Teste de link com base Terra concluido - latencia 14min 22s nominal
+2026-06-01 10:30,ALERTA,energia,Consumo energetico 8% acima da media - modulo laboratorio com demanda elevada
+2026-06-01 12:05,CRITICO,comunicacao,Perda total de sinal - antena principal danificada por tempestade de poeira
+2026-06-01 12:10,ALERTA,laboratorio,Experimento criogenico B7 pausado automaticamente por instabilidade energetica
+2026-06-01 14:00,CRITICO,energia,Geracao eolica abaixo do minimo operacional - velocidade do vento insuficiente
+2026-06-01 15:00,CRITICO,energia,Modulo de energia em modo emergencia - reserva abaixo de 45 porcento
+2026-06-01 15:05,CRITICO,laboratorio,Laboratorio desativado pelo sistema - prioridade redirecionada para modulos essenciais
+2026-06-01 17:45,INFO,comunicacao,Antena secundaria ativada com sucesso - comunicacao parcial restaurada
+2026-06-01 20:00,ALERTA,energia,Reserva de bateria em 35% - protocolo de economia energetica recomendado
